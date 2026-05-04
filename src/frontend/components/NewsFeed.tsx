@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * ─── NEWS FEED COMPONENT ───
+ * Displays a chronological stream of posts (stories, confessions, opinions) on the Bloom platform.
+ * Includes infinite scrolling capabilities, loading skeletons, and an empty state visualization.
+ */
+
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { PostCard } from "./PostCard";
@@ -172,7 +178,6 @@ const MOCK_POSTS: Post[] = [
 export function NewsFeed({ initialPosts }: NewsFeedProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts ?? []);
   const [loading, setLoading] = useState(!initialPosts);
-  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
   // Simulate initial load
@@ -188,7 +193,6 @@ export function NewsFeed({ initialPosts }: NewsFeedProps) {
   // Simulate pagination
   const loadMore = React.useCallback(() => {
     if (!hasMore || loading) return;
-    setPage((p) => p + 1);
     // In a real app: fetch next page from server
     setHasMore(false); // mock: only one page
   }, [hasMore, loading]);

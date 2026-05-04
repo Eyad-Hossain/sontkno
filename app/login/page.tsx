@@ -158,7 +158,7 @@ export default function LoginPage() {
 
           {/* Sign Up Link */}
           <p className="text-sm text-gray-400 text-center animate-slide-up" style={{ animationDelay: "0.6s" }}>
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-white font-semibold hover:underline transition-all">
               Sign up
             </Link>

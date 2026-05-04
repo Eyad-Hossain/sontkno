@@ -92,7 +92,7 @@ export default function AdminPage() {
                   </div>
 
                   <div className="p-4 bg-slate-50/50 dark:bg-black/20">
-                    <p className="text-sm text-slate-800 dark:text-slate-200 italic">"{post.content}"</p>
+                    <p className="text-sm text-slate-800 dark:text-slate-200 italic">&quot;{post.content}&quot;</p>
                   </div>
 
                   <div className="p-4 space-y-3">

@@ -1,9 +1,15 @@
 "use client";
 
+/**
+ * ─── CREATE POST MODAL COMPONENT ───
+ * This component provides the UI for users to compose and submit new stories or confessions.
+ * It handles client-side validation, tag management, and communicates with the backend `createPost` action.
+ * A core feature is the visualization of the anonymous pseudonym assignment.
+ */
+
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPost } from "@/actions/post";
-import { MODERATION_CONFIG } from "@/lib/moderationConfig";
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -315,7 +321,7 @@ export function CreatePostModal({ isOpen, onClose }: CreatePostModalProps) {
                   text-5xl text-[var(--accent-moss)]/10 leading-none
                   select-none pointer-events-none
                 ">
-                  "
+                  &quot;
                 </span>
                 <textarea
                   ref={textareaRef}

@@ -1,27 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a; /* slate-900 */
+  --background: #f8f9fa;
+  --foreground: #1a1a1a;
+  
+  /* Pastel Palette */
+  --pastel-pink: #fecdd3;
+  --pastel-purple: #e9d5ff;
+  --pastel-yellow: #fef08a;
+  --pastel-green: #bbf7d0;
+  --pastel-blue: #bae6fd;
+  --pastel-peach: #ffedd5;
+  
+  --window-bg: #ffffff;
+  --window-border: #e5e7eb;
+
+  /* Legacy Compatibility */
+  --accent-moss: #166534;
+  --accent-amber: #b45309;
+  --text-muted: #6b7280;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border: #e5e7eb;
+  --surface-raised: #f3f4f6;
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --background: #121212;
+  --foreground: #f3f4f6;
+  
+  --pastel-pink: #9d174d;
+  --pastel-purple: #6b21a8;
+  --pastel-yellow: #854d0e;
+  --pastel-green: #166534;
+  --pastel-blue: #075985;
+  --pastel-peach: #9a3412;
+  
+  --window-bg: #1e1e1e;
+  --window-border: #374151;
+
+  /* Legacy Compatibility Dark */
+  --accent-moss: #4ade80;
+  --accent-amber: #fbbf24;
+  --text-muted: #9ca3af;
+  --text-primary: #f3f4f6;
+  --text-secondary: #d1d5db;
+  --border: #374151;
+  --surface-raised: #262626;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter), var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-script: var(--font-yellowtail);
+  --color-pastel-pink: var(--pastel-pink);
+  --color-pastel-purple: var(--pastel-purple);
+  --color-pastel-yellow: var(--pastel-yellow);
+  --color-pastel-green: var(--pastel-green);
+  --color-pastel-blue: var(--pastel-blue);
+  --color-pastel-peach: var(--pastel-peach);
 }
 
 * {
   box-sizing: border-box;
 }
-
-
 
 body {
   background: var(--background);
@@ -29,41 +73,66 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image: 
+    radial-gradient(#e5e7eb 0.5px, transparent 0.5px),
+    radial-gradient(#e5e7eb 0.5px, #f8f9fa 0.5px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
 }
 
-/* Glassmorphism utility */
-.glass {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+.dark body {
+  background-image: 
+    radial-gradient(#262626 0.5px, transparent 0.5px),
+    radial-gradient(#262626 0.5px, #121212 0.5px);
 }
 
-.dark .glass {
-  background: rgba(24, 24, 27, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+/* Retro Window Styles */
+.retro-window {
+  background: var(--window-bg);
+  border: 2px solid var(--foreground);
+  box-shadow: 4px 4px 0px var(--foreground);
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-/* Custom scrollbar for the dark theme */
-::-webkit-scrollbar {
-  width: 6px;
+.retro-window-header {
+  border-bottom: 2px solid var(--foreground);
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: bold;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.retro-window-controls {
+  display: flex;
+  gap: 4px;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+.retro-control-btn {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--foreground);
+  background: white;
 }
 
 /* Selection color */
 ::selection {
-  background: rgba(168, 85, 247, 0.35);
-  color: #fafafa;
+  background: var(--pastel-purple);
+  color: #000;
+}
+
+/* 
+ * ─── HIDE NEXT.JS DEV OVERLAY ───
+ * Forcefully hiding the static indicator and dev overlay button
+ */
+#nextjs-static-indicator,
+.nextjs-static-indicator-container,
+[data-nextjs-toast-wrapper],
+nextjs-portal,
+div[data-nextjs-dialog-overlay],
+div[data-nextjs-dialog-content] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }

@@ -1,5 +1,11 @@
 "use server";
 
+/**
+ * ─── POST ACTIONS ───
+ * This file contains all server-side logic for creating and fetching posts.
+ * It uses Prisma to interact with the MongoDB database.
+ */
+
 import { prisma } from "@/lib/db";
 import { getRandomFlower } from "@/lib/flowers";
 import { auth } from "@/lib/auth";
@@ -7,6 +13,9 @@ import { moderatePost } from "@/lib/moderationService";
 import { MODERATION_CONFIG, PostCategory } from "@/lib/moderationConfig";
 import { revalidatePath } from "next/cache";
 
+/**
+ * Response interface for post creation
+ */
 export interface CreatePostResponse {
   success: boolean;
   postId?: string;
@@ -16,14 +25,13 @@ export interface CreatePostResponse {
 }
 
 /**
- * Creates a new post with full moderation workflow
+ * CREATING A NEW POST
  * 
- * Flow:
- * 1. Validate user session
- * 2. Run moderation checks
- * 3. If safe (score < 40) → publish immediately
- * 4. If risky (40-70) → publish but queue for review
- * 5. If blocked (70+) → reject and queue for manual review
+ * 1. Validates the user session.
+ * 2. Runs the content through a moderation filter.
+ * 3. Assigns an anonymous flower pseudonym.
+ * 4. Saves the post to MongoDB with initial reaction counts.
+ * 5. Queues risky posts for admin review.
  */
 export async function createPost(
   content: string,
@@ -32,28 +40,30 @@ export async function createPost(
   groupId: string,
   imageUrl?: string
 ): Promise<CreatePostResponse> {
-  // Validate session
+  // Check if user is logged in
   const session = await auth();
   if (!session?.user) {
-    throw new Error("Unauthorized");
+    throw new Error("You must be logged in to post.");
   }
 
-  // Validate category
+  // Validate post category
   if (!MODERATION_CONFIG.CATEGORIES.includes(category as PostCategory)) {
-    throw new Error("Invalid category");
+    throw new Error("Invalid post category selected.");
   }
 
-  // Validate content length
+  // Validate content length (1 to 2000 characters)
   if (!content.trim() || content.length > 2000) {
-    throw new Error("Post must be between 1 and 2000 characters");
+    throw new Error("Post content must be between 1 and 2000 characters.");
   }
 
   try {
-    // Run moderation checks
+    // Run automated moderation checks
     const moderation = moderatePost(content, category, tags);
+    
+    // Assign a unique flower name for anonymity
     const flowerPseudonym = getRandomFlower();
 
-    // Determine publication status based on risk score
+    // Determine status based on moderation risk score
     let publicationStatus: "published" | "under_review" | "rejected" = "published";
     if (moderation.riskScore >= MODERATION_CONFIG.BLOCK_THRESHOLD) {
       publicationStatus = "rejected";
@@ -61,13 +71,13 @@ export async function createPost(
       publicationStatus = "under_review";
     }
 
-    // Ensure group exists (or use a default)
+    // Get the target group (defaults to "General" if not specified)
     const activeGroupId = groupId === "default" 
       ? (await prisma.group.findFirst({ select: { id: true } }))?.id || (await prisma.group.create({ data: { name: "General" } })).id
       : groupId;
 
-    // Create the post
-    const post = await prisma.post.create({
+    // Save the post to the database
+    const newPost = await prisma.post.create({
       data: {
         content,
         category,
@@ -78,48 +88,65 @@ export async function createPost(
         publicationStatus,
         riskScore: moderation.riskScore,
         moderationReason: moderation.reasons.join("; "),
+        // Initialize reaction counts as zeros
+        reactionCounts: {
+          set: {
+            like: 0,
+            love: 0,
+            haha: 0,
+            wow: 0,
+            sad: 0,
+            angry: 0
+          }
+        },
       },
     });
 
-    // Queue for moderation if not safe
+    // If the post is risky or rejected, add it to the moderation queue for manual review
     if (publicationStatus === "under_review" || publicationStatus === "rejected") {
       await prisma.moderationQueue.create({
         data: {
-          postId: post.id,
+          postId: newPost.id,
           content,
           category,
           tags: tags,
           riskScore: moderation.riskScore,
           moderationReason: moderation.reasons.join("; "),
-          status: publicationStatus === "rejected" ? "pending" : "pending",
+          status: "pending",
         },
       });
     }
 
-    // Return response
-    let message = "Post published successfully!";
+    // Prepare user-friendly feedback message
+    let feedbackMessage = "Post published successfully!";
     if (publicationStatus === "under_review") {
-      message = "Your post has been submitted for review. It will be visible once approved.";
+      feedbackMessage = "Your post is under review and will be visible once approved.";
     } else if (publicationStatus === "rejected") {
-      message = "Your post was not published as it contains identifying information. Please remove names, emails, or phone numbers and try again.";
+      feedbackMessage = "Post rejected due to privacy concerns (e.g. personal info). Please edit and try again.";
     }
 
-    // Invalidate the cache to show the new post
+    // Refresh the page data to show the new post
     revalidatePath("/");
 
     return {
       success: true,
-      postId: post.id,
+      postId: newPost.id,
       publicationStatus,
       riskScore: moderation.riskScore,
-      message,
+      message: feedbackMessage,
     };
   } catch (error) {
-    console.error("Post creation error:", error);
-    throw error;
+    console.error("Error creating post:", error);
+    throw new Error("Failed to create post. Please try again later.");
   }
 }
 
+/**
+ * FETCHING POSTS FOR THE FEED
+ * 
+ * Fetches all published posts, including their comments.
+ * Reactions are pulled from the denormalized 'reactionCounts' field for speed.
+ */
 export async function getPosts(groupId?: string) {
   const posts = await prisma.post.findMany({
     where: {
@@ -131,7 +158,6 @@ export async function getPosts(groupId?: string) {
     include: {
       comments: {
         orderBy: { createdAt: "desc" },
-        // Only select anonymous-safe fields
         select: {
           id: true,
           content: true,
@@ -139,37 +165,27 @@ export async function getPosts(groupId?: string) {
           createdAt: true,
         },
       },
-      _count: {
-        select: { reactions: true },
-      },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  // Aggregate reaction counts by type for each post
-  const postsWithReactions = await Promise.all(
-    posts.map(async (post) => {
-      const reactionCounts = await prisma.reaction.groupBy({
-        by: ["type"],
-        where: { postId: post.id },
-        _count: { type: true },
-      });
-
-      const reactions: Record<string, number> = {};
-      reactionCounts.forEach((r) => {
-        reactions[r.type] = r._count.type;
-      });
-
-      return {
-        ...post,
-        reactions,
-      };
-    })
-  );
-
-  return postsWithReactions;
+  // Format the data for the frontend
+  return posts.map(post => ({
+    ...post,
+    reactions: post.reactionCounts || {
+      like: 0,
+      love: 0,
+      haha: 0,
+      wow: 0,
+      sad: 0,
+      angry: 0
+    },
+  }));
 }
 
+/**
+ * FETCHING A SINGLE POST BY ID
+ */
 export async function getPostById(postId: string) {
   const post = await prisma.post.findUnique({
     where: { 
@@ -191,16 +207,15 @@ export async function getPostById(postId: string) {
 
   if (!post) return null;
 
-  const reactionCounts = await prisma.reaction.groupBy({
-    by: ["type"],
-    where: { postId: post.id },
-    _count: { type: true },
-  });
-
-  const reactions: Record<string, number> = {};
-  reactionCounts.forEach((r) => {
-    reactions[r.type] = r._count.type;
-  });
-
-  return { ...post, reactions };
+  return { 
+    ...post, 
+    reactions: post.reactionCounts || {
+      like: 0,
+      love: 0,
+      haha: 0,
+      wow: 0,
+      sad: 0,
+      angry: 0
+    }
+  };
 }

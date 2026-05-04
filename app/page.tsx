@@ -1,25 +1,19 @@
-import { NewsFeed } from "@/components/NewsFeed";
-import { HeaderAuth } from "@/components/HeaderAuth";
+/**
+ * ─── BLOOM MAIN ENTRY POINT ───
+ * This is the root page for the Bloom platform.
+ * It authenticates the user session and renders the primary StoryViewerCanvas.
+ */
+
 import { auth } from "@/lib/auth";
+import { StoryViewerCanvas } from "@/components/StoryViewerCanvas";
 
 export default async function Home() {
+  // Fetch session server-side to pass initial auth state to the canvas
   const session = await auth();
+  
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-black">
-      {/* Sticky Top Navigation Bar */}
-      <nav className="fixed top-0 inset-x-0 h-14 bg-white dark:bg-black border-b border-slate-300 dark:border-white/10 z-50 flex items-center">
-        <div className="w-full max-w-[470px] mx-auto px-4 flex items-center justify-between">
-          <h1 className="text-xl font-serif italic font-bold text-slate-900 dark:text-white">
-            Bloom
-          </h1>
-          <HeaderAuth session={session} />
-        </div>
-      </nav>
-
-      {/* Main Feed Container */}
-      <div className="pt-14 w-full max-w-[470px] mx-auto pb-20">
-        <NewsFeed />
-      </div>
+    <main className="min-h-screen bg-background transition-colors overflow-x-hidden">
+      <StoryViewerCanvas session={session} />
     </main>
   );
 }

@@ -148,7 +148,7 @@ export function detectAccusationKeywords(text: string): {
         end: number;
     }[] = [];
 
-    const lowerText = text.toLowerCase();
+
 
     for (const keyword of MODERATION_CONFIG.ACCUSATION_KEYWORDS) {
         const regex = new RegExp(`\\b${keyword}\\b`, "gi");
@@ -264,7 +264,7 @@ export function validateTags(tags: string[]): {
 export function calculateRiskScore(
     text: string,
     category: string,
-    tags: string[] = []
+    _tags: string[] = []
 ): { score: number; breakdown: Record<string, number> } {
     let score = 0;
     const breakdown: Record<string, number> = {};
@@ -330,7 +330,7 @@ export function moderatePost(
     }
 
     // Calculate risk score
-    const { score, breakdown } = calculateRiskScore(content, category, tagValidation.valid);
+    const { score } = calculateRiskScore(content, category, tagValidation.valid);
 
     // Collect entities
     const identifiers = detectIdentifiers(content);

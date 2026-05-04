@@ -19,12 +19,12 @@
       }
     ],
     "paths": {
-      "@/actions/*": ["backend/actions/*"],
-      "@/prisma/*": ["backend/prisma/*"],
-      "@/lib/*": ["backend/lib/*"],
-      "@/components/*": ["frontend/components/*"],
-      "@/api/*": ["api/*"],
-      "@/*": ["./*"]
+      "@/actions/*": ["./src/backend/actions/*"],
+      "@/prisma/*": ["./src/backend/prisma/*"],
+      "@/lib/*": ["./src/backend/lib/*"],
+      "@/components/*": ["./src/frontend/components/*"],
+      "@/api/*": ["./src/api/*"],
+      "@/*": ["./src/*", "./*"]
     }
   },
   "include": [
@@ -34,10 +34,10 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-    "backend/**/*.ts",
-    "api/**/*.ts",
-    "frontend/**/*.ts",
-    "frontend/**/*.tsx"
+    "src/backend/**/*.ts",
+    "src/api/**/*.ts",
+    "src/frontend/**/*.ts",
+    "src/frontend/**/*.tsx"
   ],
   "exclude": ["node_modules"]
 }

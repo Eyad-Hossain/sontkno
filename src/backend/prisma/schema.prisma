@@ -6,30 +6,27 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
 // ─── NextAuth Session Tables (gate only, not linked to content) ───
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
   email         String    @unique
   emailVerified DateTime? @map("email_verified")
   role          String    @default("user") // "user" | "admin"
   sessions      Session[]
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  // This User model exists ONLY for NextAuth session management.
-  // It has NO relation to Post, Comment, or Reaction.
-
   @@map("users")
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
+  userId       String   @map("user_id") @db.ObjectId
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -37,6 +34,7 @@ model Session {
 }
 
 model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   identifier String
   token      String   @unique
   expires    DateTime
@@ -48,7 +46,7 @@ model VerificationToken {
 // ─── Content Tables (completely anonymous) ───
 
 model Group {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   isPrivate Boolean  @default(false)
   passcode  String?
@@ -58,21 +56,34 @@ model Group {
   @@map("groups")
 }
 
+// Composite type for denormalized reaction counts
+type ReactionCounts {
+  like  Int @default(0)
+  love  Int @default(0)
+  haha  Int @default(0)
+  wow   Int @default(0)
+  sad   Int @default(0)
+  angry Int @default(0)
+}
+
 model Post {
-  id                  String            @id @default(cuid())
+  id                  String            @id @default(auto()) @map("_id") @db.ObjectId
   content             String
   imageUrl            String?           @map("image_url")
   flowerPseudonym     String            @map("flower_pseudonym")
   
-  // New moderation fields
-  category            String            @default("story") // "confession", "story", "opinion"
-  tags                String[]          @default([]) // JSON array of tags
-  publicationStatus   String            @default("published") // "published", "under_review", "rejected"
+  category            String            @default("story")
+  tags                String[]          @default([])
+  publicationStatus   String            @default("published")
   riskScore           Int               @default(0) @map("risk_score")
   moderationReason    String?           @map("moderation_reason")
   
+  // Denormalized counts for faster queries
+  reactionCounts      ReactionCounts?
+  
   group               Group             @relation(fields: [groupId], references: [id])
-  groupId             String            @map("group_id")
+  groupId             String            @map("group_id") @db.ObjectId
+  
   reactions           Reaction[]
   comments            Comment[]
   reports             Report[]
@@ -83,27 +94,25 @@ model Post {
   isRemoved           Boolean           @default(false) @map("is_removed")
   createdAt           DateTime          @default(now()) @map("created_at")
 
-  // CRITICAL: No authorId. No User relation.
-
   @@map("posts")
 }
 
 model Reaction {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   type      String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String   @map("post_id")
+  postId    String   @map("post_id") @db.ObjectId
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("reactions")
 }
 
 model Comment {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   content         String
   flowerPseudonym String   @map("flower_pseudonym")
   post            Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId          String   @map("post_id")
+  postId          String   @map("post_id") @db.ObjectId
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("comments")
@@ -112,22 +121,20 @@ model Comment {
 // ─── Moderation Tables ───
 
 model Report {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String   @map("post_id")
+  postId    String   @map("post_id") @db.ObjectId
   reason    String   // "harassment", "spam", "inappropriate", "other"
   details   String?
   createdAt DateTime @default(now()) @map("created_at")
-
-  // No userId — reports are anonymous too.
 
   @@map("reports")
 }
 
 model ModerationAction {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId    String   @map("post_id")
+  postId    String   @map("post_id") @db.ObjectId
   action    String   // "flagged", "removed", "dismissed"
   reason    String
   createdAt DateTime @default(now()) @map("created_at")
@@ -136,17 +143,17 @@ model ModerationAction {
 }
 
 model ModerationQueue {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   post            Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  postId          String   @unique @map("post_id")
+  postId          String   @unique @map("post_id") @db.ObjectId
   content         String
   category        String
   tags            String[] @default([])
   riskScore       Int      @map("risk_score")
   moderationReason String?  @map("moderation_reason")
-  status          String   @default("pending") // "pending", "approved", "rejected"
+  status          String   @default("pending")
   reviewedAt      DateTime? @map("reviewed_at")
-  reviewedBy      String?  @map("reviewed_by") // Admin user ID (if manual review)
+  reviewedBy      String?  @map("reviewed_by") @db.ObjectId
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("moderation_queue")
